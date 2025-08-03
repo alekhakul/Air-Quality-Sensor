@@ -17,7 +17,7 @@ float ambientHumidity, ambientTemperature;
 float vocIndex, noxIndex;
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
 
     Wire.begin();
 
@@ -41,12 +41,12 @@ void setup() {
         while(true) {}
     }
 
-    delay(1000);
+    delay(3000);
 }
 
 void loop() {
     // Wait to prepare data
-    delay(1000);
+    delay(3000);
 
     // Read measurement data, check for errors
     uint16_t error = sen55.readMeasuredValues(
@@ -83,4 +83,7 @@ void loop() {
         lcd.print("VOC:");
         lcd.print(vocIndex, 0);
     }
+    Serial.print("Loop\n");
+    Serial.print(ambientHumidity,0);
+    Serial.print("\n");
 }

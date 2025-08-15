@@ -1,56 +1,70 @@
 `timescale 1ns/1ns
 
-module lcd_ctrl_tb;
+module lcd_tb;
 
-    reg clk, rst, rs, rw, start;
-    reg [7:0] datain;
+    // Testbench signals
+    reg clk;
+    reg rst;
+    reg rs_in;
+    reg start;
+    reg [7:0] data_in;
 
-    wire [3:0] dataout;
-    wire rs_out, rw_out, enable;
+    // Wires to connect to the module's outputs
+    wire [3:0] data_out;
+    wire rs_out;
+    wire enable_out;
+    wire busy;
 
-    // Instantiate the FSM
-    lcd_ctrl uut (
+    // Instantiate your lcd module
+    lcd uut (
         .clk(clk),
         .rst(rst),
-        .rs_in(rs),
-        .rw_in(rw),
-        .data_in(datain),
+        .rs_in(rs_in),
         .start(start),
+        .data_in(data_in),
         .rs_out(rs_out),
-        .rw_out(rw_out),
-        .enable_out(enable),
-        .data_out(dataout)
+        .enable_out(enable_out),
+        .busy(busy),
+        .data_out(data_out)
     );
 
-    // Clock generation: 10ns period
-    initial clk = 1;
-    always #50 clk = ~clk;
+    // Clock generation (12 MHz for iCEBreaker)
+    // 1 / 12MHz = ~83.33 ns period
+    initial clk = 0;
+    always #41.67 clk = ~clk;
 
+    // Test sequence
     initial begin
-        // Dump the waveform to a vcd file for GTKWave
-        $dumpfile("lcd_ctrl_tb.vcd");
-        $dumpvars(0, lcd_ctrl_tb);
-        // Display headers
-        $display("Time\tReset\tRS\tRW\tStart\tDatain\tRS_out\tRW_out\tEnable\tDataout");
-        $monitor("%g\t%b\t%b\t%b\t%b\t%b\t%b\t%b\t%b\t%b", $time, rst, rs, rw, start, datain, rs_out, rw_out, enable, dataout);
+        // Setup waveform dumping
+        $dumpfile("lcd_tb.vcd");
+        $dumpvars(0, lcd_tb);
 
-        // Initialize signals
-        rst = 0; 
-        rs = 0; 
-        rw = 0; 
-        start = 0; 
-        datain = 0;
+        // Start with a reset pulse
+        rst = 1;
+        start = 0;
+        rs_in = 0;
+        data_in = 8'h00;
+        #100; // Hold reset for 100ns
+        rst = 0;
 
-        // Reset pulse
-        #010 {rst, rs, rw, start, datain} = 12'b1_0_0_0_00000000;
-        #190 {rst, rs, rw, start, datain} = 12'b0_0_0_0_00000000; // #200
+        // Wait for init to finish
+        wait (busy == 0);
+        $display("Time %t: LCD initialization complete. Controller is idle.", $time);
 
-        // Write (1) Data (1) register with A0 
-        #100 {rst, rs, rw, start, datain} = 12'b0_1_1_1_00110011;
-        #100 {rst, rs, rw, start, datain} = 12'b0_x_x_0_xxxxxxxx;
+        // 3. Send a character: 'A' (ASCII code is 0x41)
+        #100;
+        start = 1;      // Pulse start high to begin the write
+        rs_in = 1;      // rs_in = 1 for character data
+        data_in = 8'h41; // ASCII for 'A'
+        #100;           // Hold the inputs stable
+        start = 0;      // De-assert start
+        
+        // 4. Wait for the write to finish
+        wait (busy == 0);
+        $display("Time %t: Character 'A' has been sent.", $time);
 
-        #10000 $finish;
+        // End the simulation
+        #2000;
+        $finish;
     end
-
 endmodule
-

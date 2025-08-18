@@ -61,7 +61,7 @@ module lcd(
                     end
                 end
 
-                // -- Initialization Sequence --
+                // Initialization Sequence
                 STATE_INIT_POWERON_WAIT: if(timer >= DELAY_40MS) begin timer <= 0; state <= STATE_INIT_PULSE_1; end else timer <= timer + 1;
                 STATE_INIT_PULSE_1:      state <= STATE_INIT_WAIT_1; // Pulse for 1 cycle
                 STATE_INIT_WAIT_1:       if(timer >= DELAY_5MS) begin timer <= 0; state <= STATE_INIT_PULSE_2; end else timer <= timer + 1;
@@ -77,7 +77,7 @@ module lcd(
                 STATE_INIT_CMD_CLEAR:   begin data_reg <= 8'h01; rs_out <= 0; send_low_nibble_next <= 1; busy <= 1; state <= STATE_SETUP_ADDR; end
                 STATE_INIT_CMD_ENTRY:   begin data_reg <= 8'h06; rs_out <= 0; send_low_nibble_next <= 1; busy <= 1; state <= STATE_SETUP_ADDR; end
 
-                // -- Precise Write Cycle --
+                // Precise Write Cycle
                 STATE_SETUP_ADDR:       state <= STATE_SEND_HIGH_NIBBLE;
                 STATE_SEND_HIGH_NIBBLE: state <= STATE_PULSE_EN_HIGH;
                 STATE_PULSE_EN_HIGH:    if (timer == 3) begin timer <= 0; state <= STATE_PULSE_EN_LOW; end else timer <= timer + 1;
@@ -102,7 +102,7 @@ module lcd(
     always @(*) begin
         // Defaults
         enable_out = 0;
-        rs_out = 0; // Will be overridden
+        rs_out = 0;
         data_out = 4'bxxxx;
         
         case(state)

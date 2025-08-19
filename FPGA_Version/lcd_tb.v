@@ -21,28 +21,27 @@ module lcd_tb;
         forever #(CLK_PERIOD/2) clk = ~clk;
     end
 
-    // Task to send a command and wait for it to finish
+    // Task to send a full 8-bit command and wait
     task send_cmd;
         input [7:0] cmd;
         begin
+            wait (busy == 0);
             @(posedge clk);
             start = 1; rs_in = 0; data_in = cmd;
             @(posedge clk);
             start = 0;
-            wait (busy == 0);
-            $display("Time %t: Sent command 0x%h", $time, cmd);
         end
     endtask
 
-    // Task to send a character and wait for it to finish
+    // Task to send a full 8-bit character and wait
     task send_char;
         input [7:0] char;
         begin
+            wait (busy == 0);
             @(posedge clk);
             start = 1; rs_in = 1; data_in = char;
             @(posedge clk);
             start = 0;
-            wait (busy == 0);
             $display("Time %t: Sent character '%c'", $time, char);
         end
     endtask
@@ -51,23 +50,41 @@ module lcd_tb;
         $dumpfile("lcd_tb.vcd");
         $dumpvars(0, lcd_tb);
 
-        // 1. Reset the controller
-        rst = 1; start = 0; rs_in = 0; data_in = 0;
+        // Reset the controller
+        rst = 1; start = 0;
         #200;
         rst = 0;
-        
-        // 2. Wait for the full, automatic initialization to complete
         wait (busy == 0);
-        $display("Time %t: LCD initialization complete.", $time);
 
-        // 3. Send some test characters
-        #1000;
+        // Wait for LCD power-on
+        $display("Time %t: Waiting for LCD power-on...", $time);
+        #40_000_000; // 40ms
+
+        // Magic initialization sequence
+        send_cmd(8'h30); #5_000_000;   // Wait 5ms
+        send_cmd(8'h30); #100_000;    // Wait 100us
+        send_cmd(8'h30); #100_000;    // Wait 100us
+        send_cmd(8'h20);             // Set 4-bit mode
+        
+        $display("Time %t: Magic sequence complete.", $time);
+
+        // Send initialization commands
+        send_cmd(8'h28); // Function Set: 4-bit, 2-line
+        send_cmd(8'h0C); // Display On, Cursor Off
+        send_cmd(8'h01); // Clear Display
+        wait (busy == 0); #2_000_000; // Wait after clear display
+        send_cmd(8'h06); // Entry Mode Set
+        
+        $display("Time %t: Standard initialization complete.", $time);
+
+        // Send test characters
         send_char("H");
         send_char("e");
         send_char("l");
         send_char("l");
         send_char("o");
 
+        wait(busy==0);
         #5_000_000;
         $finish;
     end

@@ -11,6 +11,7 @@ module lcd(
     output reg [3:0] data_out
     );
 
+    // State definitions
     localparam STATE_IDLE             = 4'd0;
     localparam STATE_SETUP_ADDR       = 4'd1;
     localparam STATE_SEND_HIGH_NIBBLE = 4'd2;
@@ -24,6 +25,7 @@ module lcd(
     reg send_low_nibble_next;
     reg [10:0] timer = 0;
 
+    // State logic
     always @(posedge clk) begin
         if (rst) begin
             state <= STATE_IDLE;
@@ -77,6 +79,7 @@ module lcd(
         end
     end
 
+    // Output
     always @(*) begin
         enable_out = (state == STATE_PULSE_EN_HIGH);
         case(state)

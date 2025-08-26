@@ -41,10 +41,10 @@ Language: C++ (Arduino Framework)
 Part 2: FPGA Implementation (In Progress)
 This directory contains the Verilog source code and simulation files for a hardware-level implementation of the system's peripheral controllers on an FPGA. The goal is to replace the pre-built software libraries from the microcontroller version with custom, from-scratch digital logic.
 
-Current Progress: LCD Controller ✅
-A complete, datasheet-compliant Verilog controller for the HD44780 LCD has been designed and fully verified.
+Current Progress: LCD Controller Complete
+A complete Verilog controller for the HD44780 LCD has been designed and fully verified.
 
-The controller is implemented as a finite state machine (FSM) that handles the precise timing for the 4-bit interface, including the "magic" initialization sequence and standard write cycles.
+The controller is implemented as a finite state machine (FSM) that handles the precise timing for the 4-bit interface, including the magic initialization sequence specified in the datasheet and standard write cycles.
 
 Functional verification was performed using a Verilog testbench, with waveform analysis conducted in GTKWave to confirm timing requirements were met.
 

@@ -1,10 +1,10 @@
-# Onboard 12MHz Clock
-set_io clk 35
+# Onboard 12MHz Clock for iCE40UP5K
+set_io clk 21
 
-# LCD Connections (to PMOD 1A for iCEBreaker v1.0b)
-set_io rs_out      47
-set_io enable_out  45
-set_io data_out[0] 44
-set_io data_out[1] 46
-set_io data_out[2] 48
-set_io data_out[3] 3
+# LCD Connections to PMOD 1B
+set_io rs_out      12
+set_io enable_out  11
+set_io data_out[0] 10
+set_io data_out[1] 9
+set_io data_out[2] 6
+set_io data_out[3] 4

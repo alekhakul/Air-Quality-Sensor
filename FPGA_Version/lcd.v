@@ -1,96 +1,64 @@
 module lcd(
     input clk,
-    input rst,
-    input rs_in,
-    input start,
-    input [7:0] data_in,
-    
     output reg rs_out,
     output reg enable_out,
-    output reg busy,
     output reg [3:0] data_out
     );
 
-    // State definitions
-    localparam STATE_IDLE             = 4'd0;
-    localparam STATE_SETUP_ADDR       = 4'd1;
-    localparam STATE_SEND_HIGH_NIBBLE = 4'd2;
-    localparam STATE_PULSE_EN_HIGH    = 4'd3;
-    localparam STATE_PULSE_EN_LOW     = 4'd4;
-    localparam STATE_SEND_LOW_NIBBLE  = 4'd5;
-    localparam STATE_WAIT_CYCLE       = 4'd6;
+    // Power-on reset generator
+    reg [7:0] reset_counter = 0;
+    wire rst = (reset_counter < 255);
+    always @(posedge clk) if (reset_counter < 255) reset_counter <= reset_counter + 1;
 
-    reg [3:0] state = STATE_IDLE;
-    reg [7:0] data_reg;
-    reg send_low_nibble_next;
-    reg [10:0] timer = 0;
-
-    // State logic
+    // 12MHz clock prescaler (~100kHz output)
+    reg [15:0] prescaler = 0;
+    reg fsm_clk = 0;
     always @(posedge clk) begin
-        if (rst) begin
-            state <= STATE_IDLE;
-            busy <= 0;
-            timer <= 0;
-            rs_out <= 0;
-            enable_out <= 0;
-        end else begin
-            case(state)
-                STATE_IDLE: begin
-                    busy <= 0;
-                    if (start && !busy) begin
-                        data_reg <= data_in;
-                        rs_out <= rs_in;
-                        send_low_nibble_next <= 1;
-                        busy <= 1;
-                        state <= STATE_SETUP_ADDR;
-                    end
-                end
-
-                STATE_SETUP_ADDR:       state <= STATE_SEND_HIGH_NIBBLE;
-                STATE_SEND_HIGH_NIBBLE: state <= STATE_PULSE_EN_HIGH;
-                
-                STATE_PULSE_EN_HIGH: begin
-                    if (timer >= 3) begin
-                        timer <= 0;
-                        state <= STATE_PULSE_EN_LOW;
-                    end else timer <= timer + 1;
-                end
-
-                STATE_PULSE_EN_LOW: begin
-                    // Send one nibble for magic init number sequence
-                    if (send_low_nibble_next) begin
-                        send_low_nibble_next <= 0; 
-                        state <= STATE_SEND_LOW_NIBBLE;
-                    end else state <= STATE_WAIT_CYCLE;
-                end
-                
-                STATE_SEND_LOW_NIBBLE: state <= STATE_PULSE_EN_HIGH;
-
-                STATE_WAIT_CYCLE: begin
-                    // Wait ~50us
-                    if (timer >= 600) begin
-                        timer <= 0;
-                        state <= STATE_IDLE;
-                    end else timer <= timer + 1;
-                end
-
-                default: state <= STATE_IDLE;
-            endcase
-        end
+        if (prescaler == 120) {prescaler, fsm_clk} <= {0, ~fsm_clk};
+        else prescaler <= prescaler + 1;
     end
 
-    // Output
-    always @(*) begin
-        enable_out = (state == STATE_PULSE_EN_HIGH);
-        case(state)
-            STATE_SEND_HIGH_NIBBLE, STATE_PULSE_EN_HIGH: 
-                data_out = send_low_nibble_next ? data_reg[7:4] : data_reg[3:0];
-            STATE_SEND_LOW_NIBBLE:  
-                data_out = data_reg[3:0];
-            STATE_PULSE_EN_LOW:
-                data_out = send_low_nibble_next ? data_reg[7:4] : data_reg[3:0];
-            default:
-                data_out = 4'bxxxx;
-        endcase
+    // State definitions
+    reg [7:0] state = 0;
+    reg [7:0] data_reg;
+
+    // State logic
+    always @(posedge fsm_clk) begin
+        if (rst) begin
+            state <= 0;
+            rs_out <= 0;
+            enable_out <= 0;
+            data_out <= 4'h0;
+            data_reg <= 8'h0;
+        end else begin
+            enable_out <= (state[0] == 1); // Pulse enable high on odd states
+            
+            case(state)
+                // LCD Initialization Sequence
+                0,1:   {rs_out, data_reg} <= {1'b0, 8'h33};
+                2,3:   {rs_out, data_reg} <= {1'b0, 8'h32};
+                4,5:   {rs_out, data_reg} <= {1'b0, 8'h28}; // Function Set: 4-bit, 2-line
+                6,7:   {rs_out, data_reg} <= {1'b0, 8'h0C}; // Display ON, Cursor OFF
+                8,9:   {rs_out, data_reg} <= {1'b0, 8'h01}; // Clear Display
+                10:    begin end; // Wait ~50us
+                11,12: {rs_out, data_reg} <= {1'b0, 8'h06}; // Entry Mode Set
+
+                // Write "HELLO!"
+                13,14: {rs_out, data_reg} <= {1'b1, "H"};
+                15,16: {rs_out, data_reg} <= {1'b1, "E"};
+                17,18: {rs_out, data_reg} <= {1'b1, "L"};
+                19,20: {rs_out, data_reg} <= {1'b1, "L"};
+                21,22: {rs_out, data_reg} <= {1'b1, "O"};
+                23,24: {rs_out, data_reg} <= {1'b1, "!"};
+
+                default: state <= state; // Hold state when finished
+            endcase
+            
+            // Output
+            if (state[0] == 0) data_out <= data_reg[7:4]; // Send high nibble
+            else data_out <= data_reg[3:0]; // Send low nibble
+            
+            if (state < 25) state <= state + 1;
+        end
     end
 endmodule

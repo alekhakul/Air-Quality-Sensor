@@ -1,17 +1,10 @@
 # Onboard 12MHz Clock
 set_io clk 35
 
-# User button for start signal
-set_io start 10
-
-# Connect reset to unused pin
-set_io rst 2
-
 # LCD Connections (to PMOD 1A for iCEBreaker v1.0b)
-set_io rs_out 47  # PMOD 1A, Pin 1
-set_io enable_out  45  # PMOD 1A, Pin 2
-
-set_io data_out[0] 44  # PMOD 1A, Pin 3 (Corresponds to LCD D4)
-set_io data_out[1] 46  # PMOD 1A, Pin 4 (Corresponds to LCD D5)
-set_io data_out[2] 48  # PMOD 1A, Pin 7 (Corresponds to LCD D6)
-set_io data_out[3] 3   # PMOD 1A, Pin 8 (Corresponds to LCD D7)
+set_io rs_out      47
+set_io enable_out  45
+set_io data_out[0] 44
+set_io data_out[1] 46
+set_io data_out[2] 48
+set_io data_out[3] 3

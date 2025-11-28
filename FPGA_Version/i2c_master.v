@@ -24,7 +24,10 @@ module i2c_master (
 
     // 12MHz/30 = 400kHz
     always @(posedge clk) begin
-        if (clk_count == 29) begin
+        if (reset) begin
+            clk_count <= 0;
+            i2c_tick <= 0;
+        end else if (clk_count == 29) begin
             clk_count <= 0;
             i2c_tick <= 1;
         end else begin
@@ -51,6 +54,7 @@ module i2c_master (
             sda_en <= 0; sda_out <= 1;
             busy <= 0;
             ack_error <= 0;
+            substate <= 0;
         end else if (i2c_tick) begin
             case (state)
                 IDLE: begin

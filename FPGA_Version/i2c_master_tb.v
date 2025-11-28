@@ -64,16 +64,16 @@ module i2c_tb;
         $dumpvars(0, i2c_tb);
 
         // Init inputs
-        rst = 1;
+        reset = 1;
         start = 0;
         addr = 7'h59;   // Address of SGP40 sensor
         data = 8'h6A;   // Random test data
 
         // Sequence
-        #200 rst = 0;       // Release reset
+        #200 reset = 0;       // Release reset
         #1000 start = 1;    // Press start
-        #100 start = 0;     // Release start
-
+        #5000 start = 0;     // Release start
+        wait(busy == 1);
         // Wait for master to finish
         wait(busy == 0);
 

@@ -42,11 +42,17 @@ This directory contains the Verilog source code and simulation files. The goal i
 * Verified via GTKWave analysis to ensure setup and hold times are met.
 
 #### 2. I2C Master Controller
-* **Status:** Design & Simulation Complete
+* **Status:** Design & Simulation Complete (Read + Write)
 * Designed a custom **I2C Master FSM** from scratch (no IP blocks).
 * **Tristate Logic:** Implemented manual open-drain logic (`assign sda = enable ? 0 : 1'bz`) to handle bidirectional communication.
 * **Clock Generation:** Created logic to oversample the I2C bus (400kHz FSM tick for 100kHz SCL) to ensure data stability during clock edges.
-* **Verification:** Verified using a testbench that mimics a slave device acknowledging (ACK) the address and data bytes.
+* **Multi-byte Read Support:** Extended the FSM to shift bytes *in* from a slave, ACKing all but the last requested byte and NACKing the final one, streaming each received byte out via a `byte_ready` pulse.
+* **Verification:** Verified using a testbench that reacts to the FSM's own state (rather than fixed timing offsets) to mimic a slave ACKing a write and driving real data bits back during a read. This caught two real bugs: the address phase was only sending 7 bits instead of the full 7-bit-address-plus-R/W-bit byte, and the master wasn't releasing the bus after driving its own ACK, so it stomped on the second byte of a multi-byte read.
+
+#### 3. Top-Level Integration (`top.v`)
+* **Status:** Design Complete, Not Hardware-Verified
+* Bridges the two peripherals into one autonomous FSM: runs the LCD magic-init sequence and prints a static label once at boot, then loops forever — write the SGP40 "measure raw" command, wait out the conversion time, read the 3-byte response, convert it to ASCII hex, and display it.
+* Elaborates cleanly against `i2c_master.v` and `lcd.v` (`iverilog -Wall`), but the sensor timing/command bytes and the I2C pin assignments in `icebreaker.pcf` are best-effort from the datasheet, not validated against real hardware.
 
 ### Tools & Stack
 * **FPGA Board:** iCEBreaker v1.1a (Lattice iCE40)
@@ -57,7 +63,7 @@ This directory contains the Verilog source code and simulation files. The goal i
 ---
 
 ## How to Run Simulations
-To verify the logic using the open-source toolchain:
+To verify the logic using the open-source toolchain (if using the oss-cad-suite distribution, source its environment script first, e.g. `. environment.ps1` / `source environment.sh`, so `iverilog`/`vvp` can find their backend binaries):
 
 **1. Simulate the LCD Controller:**
 ```bash
@@ -73,10 +79,17 @@ vvp i2c_sim
 gtkwave i2c_tb.vcd
 ```
 
+**3. Elaborate the Top-Level (no testbench, just a wiring/port check):**
+```bash
+iverilog -Wall -o top_check -tnull top.v i2c_master.v lcd.v
+```
+
+## Project Status
+This FPGA side was a learning exercise to understand I2C and HD44780 timing at the register level, not a planned hardware build-out — the [Microcontroller Version](#part-1-microcontroller-implementation-firmware) already handles the sensor in practice. As a result, hardware synthesis and physical sensor integration below are unlikely to happen, but the RTL and its testbenches stand on their own as a from-scratch verification exercise.
+
 ## Roadmap & Next Steps
-* **Hardware Synthesis:** Synthesize the verified LCD controller and program it onto the physical iCEBreaker board.
-* **Sensor Integration:** Connect the physical SGP40/BMV080 sensors to the FPGA and verify I2C ACK on the logic analyzer.
-* **System Top-Level:** Create a `top.v` module to bridge the I2C data (input) to the LCD display (output), converting the binary sensor values to ASCII for display.
+* **Hardware Synthesis:** Synthesize the design and program it onto the physical iCEBreaker board.
+* **Sensor Integration:** Connect a physical SGP40/BMV080 sensor to the FPGA and confirm the I2C pin assignments and command timing in `icebreaker.pcf`/`top.v` against a logic analyzer.
 
 ---
 
